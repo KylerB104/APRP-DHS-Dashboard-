@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DHS Threat & Readiness Dashboard (RP)</title>
+  <style>
+    :root{
+      --bg:#0b0f16;
+      --card:#121a26;
+      --muted:#93a4b7;
+      --text:#e9f0f7;
+
+      /* status colors (not "panic rainbow") */
+      --ok:#1e8e5a;       /* managed */
+      --watch:#d0a100;    /* attention */
+      --risk:#c24545;     /* high risk */
+      --border:#253244;
+      --chip:#0f1622;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 800px at 10% 10%, #132033 0%, var(--bg) 55%) fixed;
+      color:var(--text);
+      line-height:1.35;
+    }
+    header{
+      padding:20px 16px 10px;
+      max-width:1100px;
+      margin:0 auto;
+    }
+    h1{
+      margin:0 0 6px;
+      font-size:20px;
+      letter-spacing:.2px;
+    }
+    .sub{
+      color:var(--muted);
+      font-size:13px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:0 16px 26px;
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:14px;
+    }
+    @media (max-width: 920px){
+      .wrap{grid-template-columns:1fr}
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.25);
+    }
+    .card h2{
+      margin:0 0 10px;
+      font-size:14px;
+      color:#d7e3f1;
+      letter-spacing:.3px;
+      text-transform:uppercase;
+    }
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .snapshot{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:6px;
+    }
+    .metric{
+      background: rgba(15,22,34,.65);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:10px 12px;
+    }
+    .metric .label{
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:6px;
+    }
+    .metric .value{
+      display:flex;
+      align-items:baseline;
+      gap:8px;
+      font-size:22px;
+      font-weight:700;
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:5px 9px;
+      border-radius:999px;
+      background: var(--chip);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size:12px;
+    }
+    .chip strong{color:var(--text); font-weight:700}
+    .btns{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    button{
+      cursor:pointer;
+      border:1px solid var(--border);
+      background: rgba(15,22,34,.75);
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:12px;
+      font-size:13px;
+    }
+    button:hover{filter:brightness(1.08)}
+    button:active{transform:translateY(1px)}
+    .ghost{background:transparent}
+    .danger{border-color: rgba(194,69,69,.6)}
+    .ok{border-color: rgba(30,142,90,.6)}
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0 8px;
+      font-size:13px;
+    }
+    th{
+      text-align:left;
+      font-size:11px;
+      color:var(--muted);
+      font-weight:600;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+      padding:0 8px;
+    }
+    td{
+      padding:10px 8px;
+      background: rgba(15,22,34,.55);
+      border-top:1px solid var(--border);
+      border-bottom:1px solid var(--border);
+    }
+    tr td:first-child{
+      border-left:1px solid var(--border);
+      border-top-left-radius:12px;
+      border-bottom-left-radius:12px;
+    }
+    tr td:last-child{
+      border-right:1px solid var(--border);
+      border-top-right-radius:12px;
+      border-bottom-right-radius:12px;
+    }
+    .kpi{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    select, input[type="text"], input[type="date"]{
+      width:100%;
+      background: rgba(7,10,16,.6);
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:13px;
+      outline:none;
+    }
+    .tiny{font-size:12px;color:var(--muted)}
+    .status{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      border:1px solid var(--border);
+      background: rgba(15,22,34,.6);
+      white-space:nowrap;
+    }
+    .dot{
+      width:9px;height:9px;border-radius:50%;
+      background: var(--muted);
+      box-shadow:0 0 0 3px rgba(255,255,255,.04);
+    }
+    .s-managed .dot{background: var(--ok)}
+    .s-attn .dot{background: var(--watch)}
+    .s-risk .dot{background: var(--risk)}
+    .nowrap{white-space:nowrap}
+    textarea{
+      width:100%;
+      min-height:120px;
+      resize:vertical;
+      background: rgba(7,10,16,.6);
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px;
+      font-size:12px;
+      outline:none;
+    }
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 520px){
+      .snapshot,.grid2{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>DHS Threat & Readiness Dashboard <span class="tiny">(RP • internal)</span></h1>
+  <div class="sub">
+    <span class="chip">Updated: <strong id="updatedLabel">—</strong></span>
+    <span class="chip">Confidence: <strong id="confidenceLabel">High</strong></span>
+    <span class="chip">Primary Driver: <strong id="driverLabel">Infrastructure strain + extremist chatter</strong></span>
+    <span class="chip">Trend (7 days): <strong id="trendLabel">↔ Stable</strong></span>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: core tables -->
+  <section class="card">
+    <h2>National Snapshot</h2>
+    <div class="snapshot">
+      <div class="metric">
+        <div class="label">Overall Threat Level (avg)</div>
+        <div class="value"><span id="overallThreat">3.0</span> <span class="tiny">/ 5</span>
+          <span id="overallThreatStatus" class="status s-attn"><span class="dot"></span><span>Attention</span></span>
+        </div>
+      </div>
+      <div class="metric">
+        <div class="label">Overall Readiness Level (avg)</div>
+        <div class="value"><span id="overallReady">4.0</span> <span class="tiny">/ 5</span>
+          <span id="overallReadyStatus" class="status s-managed"><span class="dot"></span><span>Managed</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button id="saveBtn" class="ok">Save</button>
+      <button id="resetBtn" class="danger">Reset to Default</button>
+      <button id="exportBtn" class="ghost">Export JSON</button>
+      <button id="importBtn" class="ghost">Import JSON</button>
+    </div>
+
+    <div style="height:12px"></div>
+
+    <h2>Threat Categories</h2>
+    <table id="threatTable">
+      <thead>
+        <tr>
+          <th style="width:38%">Category</th>
+          <th style="width:14%">Threat</th>
+          <th style="width:14%">Ready</th>
+          <th style="width:12%">Trend</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <h2>Critical Infrastructure</h2>
+    <table id="infraTable">
+      <thead>
+        <tr>
+          <th style="width:38%">Sector</th>
+          <th style="width:14%">Threat</th>
+          <th style="width:14%">Ready</th>
+          <th style="width:12%">Trend</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- RIGHT: controls / notes -->
+  <aside class="card">
+    <h2>Inputs</h2>
+    <div class="grid2">
+      <div>
+        <div class="tiny">Updated Date</div>
+        <input id="updatedDate" type="date" />
+      </div>
+      <div>
+        <div class="tiny">Confidence</div>
+        <select id="confidence">
+          <option>High</option>
+          <option>Medium</option>
+          <option>Low</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+    <div class="tiny">Primary Risk Driver</div>
+    <input id="driver" type="text" placeholder="e.g., Infrastructure strain + extremist chatter" />
+
+    <div style="height:10px"></div>
+    <div class="tiny">Manual Trend Label (7 days)</div>
+    <select id="trend">
+      <option value="↔ Stable">↔ Stable</option>
+      <option value="↗ Worsening">↗ Worsening</option>
+      <option value="↘ Improving">↘ Improving</option>
+    </select>
+
+    <div style="height:12px"></div>
+    <h2>State Readiness Watchlist</h2>
+    <div class="tiny">High Readiness (comma-separated)</div>
+    <input id="statesHigh" type="text" placeholder="e.g., Columbia, Phoenix" />
+    <div style="height:8px"></div>
+    <div class="tiny">Low Readiness / At Risk (comma-separated)</div>
+    <input id="statesLow" type="text" placeholder="e.g., Heartland, Yellowstone" />
+    <div style="height:8px"></div>
+    <div class="tiny">Coordination Issues (comma-separated)</div>
+    <input id="statesCoord" type="text" placeholder="e.g., Austin" />
+
+    <div style="height:12px"></div>
+    <h2>Notes</h2>
+    <textarea id="notes" placeholder="Keep it short. If it’s long, it belongs in a memo."></textarea>
+
+    <div style="height:10px"></div>
+    <div class="tiny">
+      Rule of thumb: if <span class="nowrap">Threat &gt; Readiness</span> on any row, you should care. Quietly.
+    </div>
+  </aside>
+
+  <section class="card" style="grid-column: 1 / -1;">
+    <h2>Rendered Watchlist</h2>
+    <div class="row">
+      <span class="chip">High Readiness: <strong id="renderHigh">—</strong></span>
+      <span class="chip">Low / At Risk: <strong id="renderLow">—</strong></span>
+      <span class="chip">Coord Issues: <strong id="renderCoord">—</strong></span>
+    </div>
+    <div style="height:10px"></div>
+    <div class="tiny">Notes</div>
+    <div id="renderNotes" class="metric" style="margin-top:6px; font-size:13px;"></div>
+  </section>
+</div>
+
+<script>
+  // -----------------------
+  // Data model (editable)
+  // -----------------------
+  const DEFAULT_DATA = {
+    meta: {
+      updated: todayISO(),
+      confidence: "High",
+      primaryDriver: "Infrastructure strain + extremist chatter",
+      trend: "↔ Stable",
+      notes: ""
+    },
+    watchlist: {
+      high: ["Columbia", "Phoenix"],
+      low: ["Heartland", "Yellowstone"],
+      coord: ["Austin"]
+    },
+    threats: [
+      { name: "Domestic Extremism", threat: 3, ready: 4, trend: "↗" },
+      { name: "Cyber Disruption", threat: 4, ready: 3, trend: "↗" },
+      { name: "Foreign Influence", threat: 2, ready: 4, trend: "↔" },
+      { name: "Lone-Actor Violence", threat: 3, ready: 3, trend: "↔" },
+      { name: "CBRN (Chemical/Bio/etc.)", threat: 1, ready: 4, trend: "↔" }
+    ],
+    infra: [
+      { name: "Power Grid", threat: 3, ready: 3, trend: "⚠️" },
+      { name: "Telecom", threat: 2, ready: 4, trend: "✓" },
+      { name: "Transportation", threat: 3, ready: 4, trend: "✓" },
+      { name: "Water Systems", threat: 2, ready: 3, trend: "↔" },
+      { name: "Financial Systems", threat: 2, ready: 4, trend: "✓" }
+    ]
+  };
+
+  const STORAGE_KEY = "rp_dhs_dashboard_v1";
+  let state = load() ?? structuredClone(DEFAULT_DATA);
+
+  // -----------------------
+  // Helpers
+  // -----------------------
+  function todayISO(){
+    const d = new Date();
+    const tzOffset = d.getTimezoneOffset();
+    // normalize to local date for the date input
+    const local = new Date(d.getTime() - tzOffset*60000);
+    return local.toISOString().slice(0,10);
+  }
+
+  function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+  function avg(arr){
+    if(!arr.length) return 0;
+    const s = arr.reduce((acc,x)=>acc+x,0);
+    return s / arr.length;
+  }
+
+  function statusFromNumbers(threat, ready){
+    // Status based on "gap" and absolute threat.
+    // managed: threat <= 2 OR (threat <= ready)
+    // attention: threat == ready OR gap == 1
+    // high risk: gap >= 2 OR threat >= 4 with ready <= 3
+    const gap = threat - ready;
+    if (gap >= 2) return { cls: "s-risk", label: "High Risk" };
+    if (threat >= 4 && ready <= 3) return { cls: "s-risk", label: "High Risk" };
+    if (gap === 1 || threat === ready) return { cls: "s-attn", label: "Attention" };
+    return { cls: "s-managed", label: "Managed" };
+  }
+
+  function makeScoreSelect(value, onChange){
+    const sel = document.createElement("select");
+    for(let i=1;i<=5;i++){
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = String(i);
+      sel.appendChild(opt);
+    }
+    sel.value = String(value);
+    sel.addEventListener("change", () => onChange(Number(sel.value)));
+    return sel;
+  }
+
+  function makeTrendSelect(value, onChange){
+    const sel = document.createElement("select");
+    ["↗","↔","↘","✓","⚠️"].forEach(t=>{
+      const opt = document.createElement("option");
+      opt.value = t;
+      opt.textContent = t;
+      sel.appendChild(opt);
+    });
+    sel.value = value;
+    sel.addEventListener("change", ()=> onChange(sel.value));
+    return sel;
+  }
+
+  function save(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function download(filename, text){
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], {type:"application/json"}));
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // -----------------------
+  // Rendering
+  // -----------------------
+  function render(){
+    // meta
+    document.getElementById("updatedLabel").textContent = state.meta.updated;
+    document.getElementById("confidenceLabel").textContent = state.meta.confidence;
+    document.getElementById("driverLabel").textContent = state.meta.primaryDriver || "—";
+    document.getElementById("trendLabel").textContent = state.meta.trend;
+
+    // inputs
+    document.getElementById("updatedDate").value = state.meta.updated;
+    document.getElementById("confidence").value = state.meta.confidence;
+    document.getElementById("driver").value = state.meta.primaryDriver;
+    document.getElementById("trend").value = state.meta.trend;
+    document.getElementById("notes").value = state.meta.notes ?? "";
+
+    document.getElementById("statesHigh").value = (state.watchlist.high ?? []).join(", ");
+    document.getElementById("statesLow").value = (state.watchlist.low ?? []).join(", ");
+    document.getElementById("statesCoord").value = (state.watchlist.coord ?? []).join(", ");
+
+    // watchlist render
+    document.getElementById("renderHigh").textContent = (state.watchlist.high?.length ? state.watchlist.high.join(", ") : "—");
+    document.getElementById("renderLow").textContent = (state.watchlist.low?.length ? state.watchlist.low.join(", ") : "—");
+    document.getElementById("renderCoord").textContent = (state.watchlist.coord?.length ? state.watchlist.coord.join(", ") : "—");
+
+    const notesBox = document.getElementById("renderNotes");
+    notesBox.textContent = state.meta.notes?.trim() ? state.meta.notes.trim() : "—";
+
+    // tables
+    renderTable("threatTable", state.threats, (idx, field, val) => {
+      state.threats[idx][field] = val;
+      computeAndRenderSnapshot();
+      save();
+    });
+
+    renderTable("infraTable", state.infra, (idx, field, val) => {
+      state.infra[idx][field] = val;
+      computeAndRenderSnapshot();
+      save();
+    });
+
+    computeAndRenderSnapshot();
+  }
+
+  function renderTable(tableId, rows, updateFn){
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    tbody.innerHTML = "";
+
+    rows.forEach((r, idx) => {
+      const tr = document.createElement("tr");
+
+      const tdName = document.createElement("td");
+      tdName.textContent = r.name;
+      tr.appendChild(tdName);
+
+      const tdThreat = document.createElement("td");
+      tdThreat.appendChild(makeScoreSelect(r.threat, (v)=>updateFn(idx,"threat", clamp(v,1,5))));
+      tr.appendChild(tdThreat);
+
+      const tdReady = document.createElement("td");
+      tdReady.appendChild(makeScoreSelect(r.ready, (v)=>updateFn(idx,"ready", clamp(v,1,5))));
+      tr.appendChild(tdReady);
+
+      const tdTrend = document.createElement("td");
+      tdTrend.appendChild(makeTrendSelect(r.trend ?? "↔", (v)=>updateFn(idx,"trend", v)));
+      tr.appendChild(tdTrend);
+
+      const tdStatus = document.createElement("td");
+      const st = statusFromNumbers(r.threat, r.ready);
+      tdStatus.innerHTML = `<span class="status ${st.cls}"><span class="dot"></span><span>${st.label}</span></span>`;
+      tr.appendChild(tdStatus);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  function computeAndRenderSnapshot(){
+    const allThreats = [...state.threats, ...state.infra];
+
+    const threatAvg = avg(allThreats.map(x=>x.threat));
+    const readyAvg  = avg(allThreats.map(x=>x.ready));
+
+    document.getElementById("overallThreat").textContent = threatAvg.toFixed(1);
+    document.getElementById("overallReady").textContent  = readyAvg.toFixed(1);
+
+    const overallThreatStatus = statusFromNumbers(Math.round(threatAvg), Math.round(readyAvg));
+    const overallReadyStatus = statusFromNumbers(Math.round(threatAvg), Math.round(readyAvg));
+
+    const ts = document.getElementById("overallThreatStatus");
+    ts.className = `status ${overallThreatStatus.cls}`;
+    ts.innerHTML = `<span class="dot"></span><span>${overallThreatStatus.label}</span>`;
+
+    const rs = document.getElementById("overallReadyStatus");
+    // readiness pill is more about whether we're keeping up (ready >= threat)
+    const readyLabel = (readyAvg >= threatAvg) ? {cls:"s-managed",label:"Managed"} :
+                       (readyAvg + 0.9 >= threatAvg) ? {cls:"s-attn",label:"Attention"} :
+                       {cls:"s-risk",label:"High Risk"};
+    rs.className = `status ${readyLabel.cls}`;
+    rs.innerHTML = `<span class="dot"></span><span>${readyLabel.label}</span>`;
+  }
+
+  // -----------------------
+  // Wire up inputs + buttons
+  // -----------------------
+  function parseCSV(str){
+    return (str || "")
+      .split(",")
+      .map(s=>s.trim())
+      .filter(Boolean);
+  }
+
+  function wire(){
+    document.getElementById("updatedDate").addEventListener("change", (e)=>{
+      state.meta.updated = e.target.value || todayISO();
+      save(); render();
+    });
+    document.getElementById("confidence").addEventListener("change",(e)=>{
+      state.meta.confidence = e.target.value;
+      save(); render();
+    });
+    document.getElementById("driver").addEventListener("input",(e)=>{
+      state.meta.primaryDriver = e.target.value;
+      save(); render();
+    });
+    document.getElementById("trend").addEventListener("change",(e)=>{
+      state.meta.trend = e.target.value;
+      save(); render();
+    });
+    document.getElementById("notes").addEventListener("input",(e)=>{
+      state.meta.notes = e.target.value;
+      save(); render();
+    });
+
+    ["statesHigh","statesLow","statesCoord"].forEach(id=>{
+      document.getElementById(id).addEventListener("input",(e)=>{
+        const key = id === "statesHigh" ? "high" : id === "statesLow" ? "low" : "coord";
+        state.watchlist[key] = parseCSV(e.target.value);
+        save(); render();
+      });
+    });
+
+    document.getElementById("saveBtn").addEventListener("click", ()=>{
+      save();
+      flash("Saved.");
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", ()=>{
+      state = structuredClone(DEFAULT_DATA);
+      save();
+      render();
+      flash("Reset to default.");
+    });
+
+    document.getElementById("exportBtn").addEventListener("click", ()=>{
+      download(`dhs_dashboard_${state.meta.updated}.json`, JSON.stringify(state, null, 2));
+      flash("Exported JSON.");
+    });
+
+    document.getElementById("importBtn").addEventListener("click", async ()=>{
+      const text = prompt("Paste your dashboard JSON here:");
+      if(!text) return;
+      try{
+        const parsed = JSON.parse(text);
+        // minimal validation
+        if(!parsed.threats || !parsed.infra) throw new Error("Missing threats/infra.");
+        state = parsed;
+        save();
+        render();
+        flash("Imported JSON.");
+      } catch(err){
+        flash("Import failed: " + err.message, true);
+      }
+    });
+  }
+
+  function flash(msg, isBad=false){
+    const el = document.createElement("div");
+    el.textContent = msg;
+    el.style.position="fixed";
+    el.style.bottom="16px";
+    el.style.right="16px";
+    el.style.padding="10px 12px";
+    el.style.borderRadius="12px";
+    el.style.border = `1px solid ${isBad ? "rgba(194,69,69,.7)" : "rgba(30,142,90,.7)"}`;
+    el.style.background="rgba(15,22,34,.9)";
+    el.style.color="var(--text)";
+    el.style.zIndex="9999";
+    el.style.boxShadow="0 12px 30px rgba(0,0,0,.35)";
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 1600);
+  }
+
+  // init
+  wire();
+  render();
+</script>
+</body>
+</html>
